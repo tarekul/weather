@@ -1,144 +1,187 @@
-class LocationObj {
-    constructor(obj={}){
-        this.obj = obj;
-    }
-
-    saveDayInfo(day,icon,highTemp,lowTemp){
-        this.obj.day = day
-        this.obj.icon = icon;
-        this.obj.highTemp = highTemp;
-        this.obj.lowTemp = lowTemp;
-    }
-
-    getInfo(){
-        return this.obj
-    }
-}
-
-const test = new LocationObj()
-test.saveDayInfo('monday', 'cloudy','45','10')
-//console.log(test.getInfo())
-
-const idk = {
-    'monday' : test
-}
-
-//console.log(idk.monday.getInfo());
-
-
-getWeatherdata = (callback) => {
-    const API_KEY = 'b55f77ffb3323f908811d7d76875c00b'
-    const LAT = '40.7128'
-    const LNG = '74.0060'
-    const url = `https://wt-taqqui_karim-gmail_com-0.sandbox.auth0-extend.com/darksky?api_key=${API_KEY}&lat=${LAT}&lng=${LNG}`    
-    //const url =`https://api.darksky.net/forecast/b55f77ffb3323f908811d7d76875c00b/37.8267,-122.4233`
-    
+const GETRequest = (url, cb) => {
     const request = new XMLHttpRequest();
     request.open('GET', url);
-    request.addEventListener('load', e => {
-        const info = JSON.parse(e.currentTarget.response);
-        const data = JSON.parse((info.res.text));
-        //console.log(data.timezone = 'America/New_York');
-        //console.log(data);
-        callback(data)
+    request.addEventListener('load', response => {
+        //console.log(typeof response.currentTarget.response);
+        const dataObj = JSON.parse(response.currentTarget.response)
+        cb(dataObj)
     })
     request.send();
+}
+
+const getGifs = (search, cb) => {
+    if (search === "" || search.trim() === "") {
+        return;
+    }
+
+    //console.log(search);
+
+    const api_key = 'siIyo4w5mg0REENX76Sr57QTgkt3BWvY';
+    const URL = `https://api.giphy.com/v1/gifs/search?api_key=${api_key}&q=${search}`;
+
+    GETRequest(URL, dataObj => {
+        const allGif = dataObj.data //Array of gif objects, length 25
+        cb(allGif);
+    })
+}
+
+const state = {
+    locations: [],
+    gifys: {
+        //'partly-cloudy-day': 'https://media2.giphy.com/media/1uLQUtPLbJMQ0/giphy.gif'
+    }
+}
+
+const getWeather = (lat, lng, cb) => {
+    const URL_BASE = 'https://wt-taqqui_karim-gmail_com-0.sandbox.auth0-extend.com/darksky'
+    const api_key = `0eb0617d0e71980e6b2f2163c66d4702`;
+    const url = `${URL_BASE}?api_key=${api_key}&lat=${lat}&lng=${lng}`
+
+    GETRequest(url, data => {
+        const stringdata = data.res.text
+        const objdata = JSON.parse(stringdata);
+        cb(objdata);
+
+
+    })
+}
+
+
+getdayName = (datetime) => {
+    const days = ['Mon', 'Tues', 'Wednes', 'Thurs', 'Fri', 'Satur', 'Sun']
+    const dayValue = new Date(datetime * 1000).getDay();
+    return days[dayValue] + 'day'
+
 
 }
 
-updateState = fulldata =>{
-    //console.log(fulldata.daily.data);
+
+objToHTML = (hi, lo, desc, day, icon) => {
+    //random gif out of 25 for that icon
+    const rand = Math.floor(Math.random() * state.gifys[icon].length)
     
-    const weeklydata = fulldata.daily.data
-    const mon = {}
-    const tue = {}
-    const wed = {}
-    const thu = {}
-    const fri = {}
-    const sat = {}
-    const sun = {}
-    const mon2 = {}
+    return `<div class="column">
+   <div class="ui fluid card">
+       <div class="image">
+           <img src="${state.gifys[icon][rand].images.original.url}">
+       </div>
+       <div class="content">
+           <a class="header">${hi}&#8457;/${lo}&#8457;</a>
+           <span class="date">${day}</span>
+           <div class="description">
+               ${desc}
+           </div>
+       </div>
+   </div>
+</div>`
+}
 
-    let everyday = {}
-    
-    const dayArray  = [mon,tue,wed,thu,fri,sat,sun,mon2]
-    const dayArray2 = ['mon','tue','wed','thu','fri','sat','sun','mon2']
-    weeklydata.forEach((day,i) => {
-        const icon = day.icon
-        const lowtemp = day.temperatureLow
-        const hightemp = day.temperatureHigh
+render = (state) => {
+    const body = document.querySelector('.js-container')
+    body.innerHTML = '';
+    state.locations.forEach(city => {
+        let js_parent_div = '<div class="js_parent_div ui five column grid">'
+        for (let i = 0; i < 5; i++) {
+            daily = city.forecast[i]
+            let forecast_columns = ''
+            const {
+                hi,
+                lo,
+                desc,
+                day,
+                icon
+            } = daily
 
-        let dayObj = new LocationObj()
-        dayObj.saveDayInfo(dayArray[i],icon,lowtemp,hightemp)
 
-        everyday[dayArray2[i]] = dayObj;
-        
-        
-       
-        
-        
+            forecast_columns += objToHTML(hi, lo, desc, day, icon)
+            js_parent_div += forecast_columns
+        }
+
+        js_parent_div += '</div>'
+        //console.log(js_parent_div)
+        body.innerHTML += js_parent_div
+        //console.log(body);
+
     });
 
-    state.new_york = everyday;
-    render(state)
-    
-
-    
 }
 
-state = {
+const searchBtn = document.querySelector('.js-search');
+const locationInput = document.querySelector('.js-input');
 
-    
-}
+searchBtn.addEventListener('click', e => {
+    if (locationInput.value.trim() != '') {
+        console.log(0)
+        console.log(e);
+        const val = locationInput.value;
+        locationInput.value = "";
 
-const objToHtml = (day,icon,lowtemp,hightemp) =>{
-    return `<div class="col-3">
-    <p>${day}<p>
-    <p>${icon}<p>
-    <p>${lowtemp}<p>
-    <p>${hightemp}</p>
-    </div>`
-}
+        const parts = val.split(',');
+        const lat = parts[0].trim();
+        const lng = parts[1].trim();
 
-render = state =>{
-    const js_row1 = document.querySelector('.js-row1')
-    const js_row2 = document.querySelector('.js-row2')
-    
-    const low_high_icon = state.new_york.mon.getInfo();
+        getWeather(lat, lng, objdata => {
+            console.log(1)
+            //console.log(objdata);
+            const lat = objdata.latitude;
+            const lng = objdata.longitude;
 
-    //objToHtml('monday',low_high_icon.icon,low_high_icon.lowTemp,low_high_icon.highTemp)
-    js_row1.innerHTML += objToHtml('monday',low_high_icon.icon,low_high_icon.lowTemp,low_high_icon.highTemp)
+            const forecasts = objdata.daily.data
+            //console.log(forecasts);
 
-    let low_high_icon2 = state.new_york.tue.getInfo();
-    
-    js_row1.innerHTML += objToHtml('tuesday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
+            //Will hold all 5 forecasts object 
+            const forecastsForState = []
+            const iconsNeeded = []
 
-    low_high_icon2 = state.new_york.wed.getInfo();
-    
-    js_row1.innerHTML += objToHtml('wednesday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
+            for (let dailyforcast of forecasts) {
+                const dayForcast = {}
 
-    low_high_icon2 = state.new_york.thu.getInfo();
-    
-    js_row1.innerHTML += objToHtml('thursday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
+                dayForcast.icon = dailyforcast.icon
+                iconsNeeded.push(dayForcast.icon);
+                console.log(iconsNeeded);
 
-    low_high_icon2 = state.new_york.fri.getInfo();
-    
-    js_row2.innerHTML += objToHtml('friday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
+                dayForcast.hi = dailyforcast.temperatureHigh
+                dayForcast.lo = dailyforcast.temperatureLow
+                dayForcast.desc = dailyforcast.summary
+                dayForcast.lastUpdated = dailyforcast.time
 
-    low_high_icon2 = state.new_york.sat.getInfo();
-    
-    js_row2.innerHTML += objToHtml('saturday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
+                const datetime = dailyforcast.time
+                dayForcast.day = getdayName(datetime);
 
-    low_high_icon2 = state.new_york.sun.getInfo();
-    
-    js_row2.innerHTML += objToHtml('sunday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
+                forecastsForState.push(dayForcast)
+            }
 
-    low_high_icon2 = state.new_york.mon2.getInfo();
-    
-    js_row2.innerHTML += objToHtml('umday',low_high_icon2.icon,low_high_icon2.lowTemp,low_high_icon2.highTemp)
-}
+            const city = {}
+            city.lat = lat
+            city.lng = lng
+            city.forecast = forecastsForState
+
+            state.locations.push(city)
+
+            let counter = 0;
+            console.log(iconsNeeded);
+
+            iconsNeeded.forEach(icon => {
+                getGifs(icon, allgifs => {
+                    counter++;
+                    const rand = Math.floor(Math.random() * allgifs.length)
+                    state.gifys[icon] = allgifs
+
+                    if (counter === 5) {
+                        render(state)
+                    }
+                })
+            })
+
+            //console.log(state);
+            // console.log(4)
+            // render(state)
+
+            console.log('STATE', state);
 
 
-getWeatherdata(updateState)
 
-console.log(state);
+        })
+    }
+
+})
